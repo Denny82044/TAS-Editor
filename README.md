@@ -2,6 +2,8 @@
 
 A modified fork of TAS-Editor specifically for the Raspberry Pi Pico 2, with direct USB script uploading, configurable playback speed, looping, and controller pause/disconnect options. This project makes real-hardware TASing on Switch 1 and 2 possible without homebrew (assuming you have a Raspberry Pi Pico 2).
 
+This project uses no form of soldering. All actions are performed with the BOOTSEL button on the Pico 2.
+
 # Setup and Usage
 
 ## Prerequisites
@@ -17,6 +19,13 @@ A modified fork of TAS-Editor specifically for the Raspberry Pi Pico 2, with dir
 
 ## Usage
 Pretty much exactly the same as MonsterDruide1's version, just with added features specifically for the custom Pico 2 firmware (it's very self explanatory).
+
+However, to operate the Pico 2 itself, the playback controls go as the following:
+*Pause/Resume: Single click of BOOTSEL
+*Reset/Reload Script: Quick double click of BOOTSEL
+
+**IMPORTANT:** if you upload a script that only consists of stick inputs, and your Pico 2 isn't being detected as a controller on your switch, you must first add some form of button action before the stick inputs. This is because stick inputs alone aren't enough to "initialise" the controller. Also, if you flash the firmware to the Pico 2 without first uploading a script, trying to press BOOTSEL to play a script will most likely do nothing.
+
 
 # Building
 
