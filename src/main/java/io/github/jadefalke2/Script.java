@@ -47,10 +47,28 @@ public class Script {
 	private long editingMillis;
 	private long lastEdit;
 
+	// Playback options for the Pico 2 firmware, saved as the "LOOP" / "HZ" / "DISCONNECT" header lines of nxTAS scripts.
+	public static final int DEFAULT_HZ = 60;
+	public static final int MIN_HZ = 1;
+	public static final int MAX_HZ = 1000; // must match the limit in the firmware's parseMovieHeader()
+	public static final boolean DEFAULT_DISCONNECT_ON_PAUSE = true;
+	private boolean loop;
+	private int hz;
+	private boolean disconnectOnPause;
+
 	public Script() throws IOException, CorruptedScriptException {
 		this(new InputLine[0], 0);
 	}
 	public Script(InputLine[] lines, int editingSeconds) {
+		this(lines, editingSeconds, false, DEFAULT_HZ, DEFAULT_DISCONNECT_ON_PAUSE);
+	}
+	public Script(InputLine[] lines, int editingSeconds, boolean loop, int hz) {
+		this(lines, editingSeconds, loop, hz, DEFAULT_DISCONNECT_ON_PAUSE);
+	}
+	public Script(InputLine[] lines, int editingSeconds, boolean loop, int hz, boolean disconnectOnPause) {
+		this.loop = loop;
+		this.hz = hz;
+		this.disconnectOnPause = disconnectOnPause;
 		this.inputLines = new ArrayList<>(Arrays.asList(lines));
 		this.dirty = false;
 		this.observers = new ArrayList<>();
@@ -206,6 +224,37 @@ public class Script {
 	public void updateLength() {
 		int after = inputLines.size();
 		observers.forEach(c -> c.onLengthChange(after));
+	}
+
+	public boolean isLoop() {
+		return loop;
+	}
+
+	public void setLoop(boolean loop) {
+		if(this.loop == loop) return;
+		this.loop = loop;
+		setDirty(true);
+	}
+
+	public int getHz() {
+		return hz;
+	}
+
+	public void setHz(int hz) {
+		if(hz < MIN_HZ || hz > MAX_HZ) throw new IllegalArgumentException("HZ must be between " + MIN_HZ + " and " + MAX_HZ);
+		if(this.hz == hz) return;
+		this.hz = hz;
+		setDirty(true);
+	}
+
+	public boolean isDisconnectOnPause() {
+		return disconnectOnPause;
+	}
+
+	public void setDisconnectOnPause(boolean disconnectOnPause) {
+		if(this.disconnectOnPause == disconnectOnPause) return;
+		this.disconnectOnPause = disconnectOnPause;
+		setDirty(true);
 	}
 
 	public int getEditingSeconds() {
