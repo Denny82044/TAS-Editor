@@ -16,7 +16,7 @@ A modified fork of TAS-Editor specifically for the Raspberry Pi Pico 2, with dir
 3. Run TAS-Editor.jar, and enjoy!
 
 ## Usage
-Pretty much exactly the same as MonsterDruide1's version, just with added features specifically for the custom Pico 2 firmware (it's self explanatory)
+Pretty much exactly the same as MonsterDruide1's version, just with added features specifically for the custom Pico 2 firmware (it's very self explanatory).
 
 # Building
 
