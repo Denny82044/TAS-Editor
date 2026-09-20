@@ -18,9 +18,12 @@ This project uses no form of soldering. All actions are performed with the BOOTS
 3. Run TAS-Editor.jar, and enjoy!
 
 ## Usage
+
+### TAS-Editor
 Pretty much exactly the same as MonsterDruide1's version, just with added features specifically for the custom Pico 2 firmware (it's very self explanatory).
 
-However, to operate the Pico 2 itself, the playback controls go as the following:
+### Pico 2 TAS Firmware
+To operate the Pico 2 itself, the playback controls go as the following:
 * Pause/Resume: Single click of BOOTSEL
 * Reset/Reload Script: Quick double click of BOOTSEL
 
