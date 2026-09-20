@@ -1,13 +1,24 @@
 # TAS-Editor
 
-A simple-to-use GUI for Nintendo Switch TAS editing.
+A modified fork of TAS-Editor specifically for the Raspberry Pi Pico 2, with direct USB script uploading, configurable playback speed, looping, and controller pause/disconnect options. This project makes real-hardware TASing on Switch 1 and 2 possible (assuming you have a Raspberry Pi Pico 2).
 
-# Set-up
+# Building
 
-*Do not download the version from this repo. Use the [TAS-Editor-Launcher](https://github.com/MonsterDruide1/TAS-Editor-Launcher/releases/latest) release which has all the information on how to set it up.*
+## Prerequisites
 
-# Usage
-The program itself should be self-explanatory. To see all possible ways of interacting with this program, please refer to the [wiki](https://github.com/MonsterDruide1/TAS-Editor/wiki), where you can read for example about how to [select frames](https://github.com/MonsterDruide1/TAS-Editor/wiki/Change-Stick-Input) or [change stick inputs](https://github.com/MonsterDruide1/TAS-Editor/wiki/Selecting-frames).
+* JDK 8 or newer (capable of compiling Java 8 source)
+* Maven
+* A clone of this repository
+
+## Instructions (Windows)
+
+1. Navigate to the project root.
+2. Open a CMD prompt and build the project:
+```
+mvn clean package
+```
+3. After the build succeeds, navigate to the /target folder.
+4. The compiled application will be located there.
 
 # Support
-If you need help with anything, have questions or suggestions, you can contact me (MonsterDruide1) either on the [Super Mario Odyssey TAS Discord](https://discord.gg/YMJ9Njzvcd), or using the [Issues](https://github.com/MonsterDruide1/TAS-Editor/issues).
+To report a bug, create a post in [Issues](https://github.com/MonsterDruide1/TAS-Editor/issues).
