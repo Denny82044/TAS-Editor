@@ -38,3 +38,6 @@ mvn clean package
 
 # Support
 To report a bug, create a post in [Issues](https://github.com/denny82044/TAS-Editor/issues).
+
+# AI Usage
+AI coding tools were used in the making of this program.
