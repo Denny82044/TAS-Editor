@@ -3,12 +3,20 @@ package io.github.jadefalke2.components;
 import io.github.jadefalke2.Script;
 import io.github.jadefalke2.TAS;
 import io.github.jadefalke2.script.Format;
+import io.github.jadefalke2.script.NXTas;
 import io.github.jadefalke2.util.CorruptedScriptException;
 import io.github.jadefalke2.util.Logger;
 
+import javax.swing.BorderFactory;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JToolBar;
+import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
+
+import java.awt.Dimension;
 import java.awt.BorderLayout;
 import java.awt.Insets;
 import java.awt.event.WindowAdapter;
@@ -103,6 +111,56 @@ public class MainEditorWindow extends JFrame {
 	}
 	public void saveFileCopy() throws IOException {
 		getActiveScriptTab().saveFileCopy();
+	}
+
+	/**
+	 * Sends the active script straight to a Pico 2 running the TAS
+	 * serial-upload firmware, over USB - no exported file needed. Probing
+	 * for the device and the upload itself both touch serial I/O, so both
+	 * run off the EDT via SwingWorker; only the dialogs get shown on it.
+	 */
+	public void uploadToPico() {
+		Script script = getActiveScriptTab().getScript();
+		String movieText = NXTas.write(script);
+
+		JDialog progress = new JDialog(this, "Uploading to Pico 2", false);
+		JLabel progressLabel = new JLabel("Looking for Pico 2...", SwingConstants.CENTER);
+		progressLabel.setBorder(BorderFactory.createEmptyBorder(24, 36, 24, 36));
+		progress.add(progressLabel);
+		progress.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+		progress.setMinimumSize(new Dimension(300, 120));
+		progress.pack();
+		progress.setLocationRelativeTo(this);
+		progress.setVisible(true);
+
+		new SwingWorker<Void, Void>() {
+			private String error = null;
+
+			@Override
+			protected Void doInBackground() {
+				try {
+					String port = PicoUploader.findDevicePortName();
+					if (port == null) {
+						error = "Couldn't find a Pico 2. Make sure it's plugged in and running the TAS firmware.";
+						return null;
+					}
+					PicoUploader.upload(port, movieText);
+				} catch (PicoUploader.UploadException e) {
+					error = e.getMessage();
+				}
+				return null;
+			}
+
+			@Override
+			protected void done() {
+				progress.dispose();
+				if (error != null) {
+					JOptionPane.showMessageDialog(MainEditorWindow.this, error, "Upload failed", JOptionPane.ERROR_MESSAGE);
+				} else {
+					JOptionPane.showMessageDialog(MainEditorWindow.this, "Uploaded! It's live on the Pico 2 now, no reset needed.", "Upload complete", JOptionPane.INFORMATION_MESSAGE);
+				}
+			}
+		}.execute();
 	}
 	public void addSingleEmptyRow() {
 		getActiveScriptTab().getPianoRoll().addEmptyRows(1);
