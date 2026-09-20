@@ -8,7 +8,7 @@ A modified fork of TAS-Editor specifically for the Raspberry Pi Pico 2, with dir
 
 * Java 8 or newer (Java 17+ recommended)
 * Raspberry Pi Pico 2
-* A way to connect your Pico to your Switch and PC (usually a USB-A to Micro-USB cable)
+* A way to connect your Pico to your Switch and PC (usually a USB-A to Micro-USB cable, but this is dependent on your setup)
 
 ## Setup
 1. Flash your Pico 2 with the latest .UF2 firmware located in the latest release.
