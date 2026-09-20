@@ -1,10 +1,14 @@
 package io.github.jadefalke2.components;
 
+import io.github.jadefalke2.Script;
+import io.github.jadefalke2.BuildInfo;
 import io.github.jadefalke2.script.Format;
 import io.github.jadefalke2.util.ObservableProperty;
 import io.github.jadefalke2.util.Settings;
 
 import javax.swing.*;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import java.awt.*;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.InputEvent;
@@ -12,17 +16,37 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 
 public class MainJMenuBar extends JMenuBar {
 
 	private static final int shortcut = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
 
-	private JMenuItem newScript, newWindow, openScript, save, saveAs, saveCopy, exit;
+	private JMenuItem newScript, newWindow, openScript, save, saveAs, saveCopy, uploadToPico, exit;
 	private JMenuItem undo, redo, cut, copy, paste, replace, deleteLines, selectLines, addLine, addLines, settings;
 	private JCheckBoxMenuItem darkTheme;
-	private JMenuItem discord, about;
+
+	// ---- Pico 2 playback options: menu text (edit these to change what the menu says) ----
+	private static final int[] HZ_PRESETS = {60, 50}; // shown in this order, above "Custom..."
+	private static final String TEXT_LOOP = "Loop script";
+	private static final String TIP_LOOP = "Restart the script from the beginning when it ends on the Pico 2 (saved in the script as \"LOOP\")";
+	private static final String TEXT_DISCONNECT = "Disconnect controller on pause";
+	private static final String TIP_DISCONNECT = "Disconnect the virtual controller from the Switch when pausing playback (saved in the script as \"DISCONNECT\")";
+	private static final String TEXT_HZ_MENU = "Playback Hz: "; // current rate gets appended
+	private static final String TIP_HZ_MENU = "How many frames per second the Pico 2 plays the script at (saved in the script as \"HZ\")";
+	private static final String TEXT_HZ_UNIT = "Hz"; // preset items read "60Hz", "50Hz"
+	private static final String TEXT_HZ_CUSTOM = "Custom...";
+	private static final String TEXT_HZ_CUSTOM_ACTIVE_PREFIX = "Custom ("; // shown while a non-preset rate is set, e.g. "Custom (75Hz)..."
+	private static final String TEXT_HZ_CUSTOM_ACTIVE_SUFFIX = ")...";
+	private static final String TITLE_HZ_DIALOG = "Custom playback Hz";
+	private static final String TEXT_HZ_DIALOG = "Playback rate in Hz (%d - %d):";
+	private static final String TITLE_HZ_ERROR = "Invalid Hz";
+	private static final String TEXT_HZ_ERROR = "Please enter a whole number between %d and %d.";
+
+	private JCheckBoxMenuItem loopScript;
+	private JCheckBoxMenuItem disconnectOnPause;
+	private JMenu hzMenu;
+	private JRadioButtonMenuItem[] hzPresetItems;
+	private JRadioButtonMenuItem hzCustomItem;
 	private final MainEditorWindow mainEditorWindow;
 
 	public MainJMenuBar(MainEditorWindow mainEditorWindow){
@@ -36,8 +60,8 @@ public class MainJMenuBar extends JMenuBar {
 		JMenu viewMenu = createViewMenu();
 		add(viewMenu);
 
-		JMenu helpMenu = createHelpMenu();
-		add(helpMenu);
+		JMenu aboutMenu = createAboutMenu();
+		add(aboutMenu);
 
 		updateUndoMenu(false, false);
 	}
@@ -101,10 +125,114 @@ public class MainJMenuBar extends JMenuBar {
 
 		fileJMenu.addSeparator();
 
+		uploadToPico = fileJMenu.add("Upload to Pico 2...");
+		uploadToPico.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, shortcut));
+		uploadToPico.addActionListener(e -> mainEditorWindow.uploadToPico());
+		uploadToPico.setToolTipText("Send the current script straight to a Pico 2 running the TAS firmware over USB");
+
+		addPlaybackOptions(fileJMenu);
+
+		fileJMenu.addSeparator();
+
 		exit = fileJMenu.add("Exit");
 		exit.addActionListener(e -> mainEditorWindow.dispatchEvent(new WindowEvent(mainEditorWindow, WindowEvent.WINDOW_CLOSING)));
 
 		return fileJMenu;
+	}
+
+	/**
+	 * Adds the per-script Pico 2 playback options below "Upload to Pico 2...". They're stored in the script itself,
+	 * so they get written to the "LOOP" / "HZ" / "DISCONNECT" header lines when saving and uploading. Their state is
+	 * refreshed from the active script whenever the File menu is opened.
+	 */
+	private void addPlaybackOptions(JMenu fileJMenu) {
+		loopScript = new JCheckBoxMenuItem(TEXT_LOOP);
+		loopScript.setToolTipText(TIP_LOOP);
+		loopScript.addActionListener(e -> {
+			ScriptTab tab = getActiveScriptTab();
+			if(tab != null) tab.getScript().setLoop(loopScript.isSelected());
+		});
+		fileJMenu.add(loopScript);
+
+		disconnectOnPause = new JCheckBoxMenuItem(TEXT_DISCONNECT, Script.DEFAULT_DISCONNECT_ON_PAUSE);
+		disconnectOnPause.setToolTipText(TIP_DISCONNECT);
+		disconnectOnPause.addActionListener(e -> {
+			ScriptTab tab = getActiveScriptTab();
+			if(tab != null) tab.getScript().setDisconnectOnPause(disconnectOnPause.isSelected());
+		});
+		fileJMenu.add(disconnectOnPause);
+
+		hzMenu = new JMenu(TEXT_HZ_MENU + Script.DEFAULT_HZ + TEXT_HZ_UNIT);
+		hzMenu.setToolTipText(TIP_HZ_MENU);
+		ButtonGroup hzGroup = new ButtonGroup();
+		hzPresetItems = new JRadioButtonMenuItem[HZ_PRESETS.length];
+		for(int i = 0; i < HZ_PRESETS.length; i++) {
+			final int hz = HZ_PRESETS[i];
+			JRadioButtonMenuItem item = new JRadioButtonMenuItem(hz + TEXT_HZ_UNIT);
+			item.addActionListener(e -> setActiveScriptHz(hz));
+			hzGroup.add(item);
+			hzMenu.add(item);
+			hzPresetItems[i] = item;
+		}
+		hzCustomItem = new JRadioButtonMenuItem(TEXT_HZ_CUSTOM);
+		hzCustomItem.addActionListener(e -> askCustomHz());
+		hzGroup.add(hzCustomItem);
+		hzMenu.add(hzCustomItem);
+		fileJMenu.add(hzMenu);
+
+		fileJMenu.addMenuListener(new MenuListener() {
+			@Override
+			public void menuSelected(MenuEvent e) {
+				updatePlaybackOptions();
+			}
+			@Override
+			public void menuDeselected(MenuEvent e) {}
+			@Override
+			public void menuCanceled(MenuEvent e) {}
+		});
+	}
+
+	/** Refreshes the loop / disconnect / HZ menu items from the currently active script. */
+	private void updatePlaybackOptions() {
+		ScriptTab tab = getActiveScriptTab();
+		loopScript.setEnabled(tab != null);
+		disconnectOnPause.setEnabled(tab != null);
+		hzMenu.setEnabled(tab != null);
+		if(tab == null) return;
+
+		Script script = tab.getScript();
+		loopScript.setSelected(script.isLoop());
+		disconnectOnPause.setSelected(script.isDisconnectOnPause());
+		hzMenu.setText(TEXT_HZ_MENU + script.getHz() + TEXT_HZ_UNIT);
+
+		boolean isPreset = false;
+		for(int i = 0; i < HZ_PRESETS.length; i++) {
+			boolean selected = HZ_PRESETS[i] == script.getHz();
+			hzPresetItems[i].setSelected(selected);
+			isPreset |= selected;
+		}
+		hzCustomItem.setSelected(!isPreset);
+		hzCustomItem.setText(isPreset ? TEXT_HZ_CUSTOM : TEXT_HZ_CUSTOM_ACTIVE_PREFIX + script.getHz() + TEXT_HZ_UNIT + TEXT_HZ_CUSTOM_ACTIVE_SUFFIX);
+	}
+
+	private void setActiveScriptHz(int hz) {
+		ScriptTab tab = getActiveScriptTab();
+		if(tab != null) tab.getScript().setHz(hz);
+	}
+
+	private void askCustomHz() {
+		ScriptTab tab = getActiveScriptTab();
+		if(tab == null) return;
+
+		Object input = JOptionPane.showInputDialog(mainEditorWindow, String.format(TEXT_HZ_DIALOG, Script.MIN_HZ, Script.MAX_HZ),
+			TITLE_HZ_DIALOG, JOptionPane.PLAIN_MESSAGE, null, null, String.valueOf(tab.getScript().getHz()));
+		if(input == null) return; // cancelled
+
+		try {
+			tab.getScript().setHz(Integer.parseInt(input.toString().trim()));
+		} catch(IllegalArgumentException ex) { // NumberFormatException is one too
+			JOptionPane.showMessageDialog(mainEditorWindow, String.format(TEXT_HZ_ERROR, Script.MIN_HZ, Script.MAX_HZ), TITLE_HZ_ERROR, JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	private JMenu createEditMenu(MainEditorWindow mainEditorWindow){
@@ -189,30 +317,11 @@ public class MainJMenuBar extends JMenuBar {
 		return viewJMenu;
 	}
 
-	private JMenu createHelpMenu(){
-		JMenu helpJMenu = new JMenu("Help");
-
-		discord = helpJMenu.add("Join the SMO TASing Discord");
-		discord.addActionListener(e -> {
-			try {
-				Desktop.getDesktop().browse(new URL("https://discord.gg/atKSg9fygq").toURI());
-			} catch (IOException | URISyntaxException ex) {
-				ex.printStackTrace();
-			}
-		});
-
-		helpJMenu.addSeparator();
-
-		about = helpJMenu.add("About SMO TAS Editor");
-		about.addActionListener(e -> {
-			try {
-				Desktop.getDesktop().browse(new URL("https://github.com/MonsterDruide1/TAS-Editor").toURI());
-			} catch (IOException | URISyntaxException ex) {
-				ex.printStackTrace();
-			}
-		});
-
-		return helpJMenu;
+	private JMenu createAboutMenu(){
+		JMenu aboutMenu = new JMenu("About");
+		JMenuItem buildTime = aboutMenu.add(BuildInfo.getDisplayText());
+		buildTime.setEnabled(false);
+		return aboutMenu;
 	}
 
 	private ScriptTab getActiveScriptTab() {
