@@ -49,7 +49,7 @@ mvn clean package
 4. The compiled application will be located there.
 
 # Support
-To report a bug, create a post in [Issues](https://github.com/denny82044/TAS-Editor/issues).
+To report a bug, create a post in [issues](https://github.com/denny82044/TAS-Editor/issues).
 
 # AI Usage
 AI coding tools were used in the making of this program.
